@@ -245,6 +245,11 @@
   }
   .algo-hero h2{ font-size:clamp(26px,4.6vw,38px); margin:0 0 8px; }
   .algo-hero p{ color:var(--ink-soft); font-weight:700; max-width:620px; margin:0 auto; }
+  .multplay-frame{
+    width:100%; height:min(1080px, calc(100vh - 220px)); min-height:640px;
+    border:1px solid var(--line); border-radius:24px; box-shadow:var(--shadow);
+    background:#fff; display:block;
+  }
 
   .partsgrid{
     display:grid; grid-template-columns:repeat(auto-fill,minmax(96px,1fr)); gap:10px;
@@ -5404,6 +5409,13 @@ const ROOSTER_B64 = "UklGRjzGAABXQVZFZm10IBAAAAABAAEAIlYAAESsAAACABAAZGF0YRjGAAA
     wb.textContent = '🧩 Word Problems';
     wb.addEventListener('click', () => { mode = 'wpGrid'; notdExpanded = false; render(); });
     wrap.appendChild(wb);
+
+    const mb = document.createElement('button');
+    mb.className = 'set-tab';
+    mb.dataset.set = 'M';
+    mb.textContent = '✖️ Multiplication Playground';
+    mb.addEventListener('click', () => { mode = 'multPlay'; notdExpanded = false; render(); });
+    wrap.appendChild(mb);
   }
 
   function highlightTab(setNum){
@@ -5418,6 +5430,7 @@ const ROOSTER_B64 = "UklGRjzGAABXQVZFZm10IBAAAAABAAEAIlYAAESsAAACABAAZGF0YRjGAAA
       let match;
       if(mode === 'algoGrid' || mode === 'algoDrill') match = (b.dataset.set === 'X');
       else if(mode === 'wpGrid' || mode === 'wpDrill') match = (b.dataset.set === 'W');
+      else if(mode === 'multPlay') match = (b.dataset.set === 'M');
       else match = false;
       b.classList.toggle('active', match);
     });
@@ -5548,6 +5561,14 @@ const ROOSTER_B64 = "UklGRjzGAABXQVZFZm10IBAAAAABAAEAIlYAAESsAAACABAAZGF0YRjGAAA
       document.querySelector('.topbar').style.display = '';
       document.body.classList.remove('no-scroll');
       renderWPDrill(stage, currentWPPart);
+      return;
+    }
+    if(mode === 'multPlay'){
+      highlightTab(null);
+      document.querySelector('.navbar').style.display = 'none';
+      document.querySelector('.topbar').style.display = '';
+      document.body.classList.remove('no-scroll');
+      renderMultPlay(stage);
       return;
     }
 
@@ -5796,6 +5817,25 @@ const ROOSTER_B64 = "UklGRjzGAABXQVZFZm10IBAAAAABAAEAIlYAAESsAAACABAAZGF0YRjGAAA
       paint(TOTAL);
     });
     revealBtn.addEventListener('click', showAnswerKey);
+  }
+
+  // ================= Multiplication Playground =================
+
+  function renderMultPlay(stage){
+    const wrap = document.createElement('div');
+    wrap.innerHTML = `
+      <div class="algo-hero">
+        <div class="eyebrow" style="color:#6C4FD6;">Multiplication Playground</div>
+        <h2>Explore the 1&ndash;12 Chart</h2>
+        <p>Simplify fractions, spot the squares, split factors, and chase doubling chains &mdash; all on one interactive times table.</p>
+      </div>
+    `;
+    const frame = document.createElement('iframe');
+    frame.className = 'multplay-frame';
+    frame.src = 'multiplication-playground.html';
+    frame.title = 'Multiplication Playground';
+    wrap.appendChild(frame);
+    stage.appendChild(wrap);
   }
 
   // ================= Word Problem Workshop =================

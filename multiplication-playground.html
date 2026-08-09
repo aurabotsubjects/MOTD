@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Multiplication Playground</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Nunito:ital,wght@0,400;0,600;0,700;0,800;1,700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#FBF6EA;
+    --paper-line:#E7DEC7;
+    --ink:#1F2A44;
+    --ink-soft:#5B6478;
+    --yellow:#FFD93D;
+    --yellow-deep:#F0B90B;
+    --pink:#FF6FA5;
+    --pink-deep:#E84E8A;
+    --mint:#3ED6A0;
+    --mint-deep:#1FAE7F;
+    --blue:#6C8CFF;
+    --blue-deep:#4A67E0;
+    --orange:#FF9142;
+    --orange-deep:#F0731A;
+    --card:#FFFFFF;
+    --cell: 42px;
+    --radius: 14px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:
+      linear-gradient(var(--paper-line) 1px, transparent 1px) 0 0/28px 28px,
+      linear-gradient(90deg, var(--paper-line) 1px, transparent 1px) 0 0/28px 28px,
+      var(--paper);
+    color:var(--ink);
+    font-family:'Nunito', sans-serif;
+    min-height:100vh;
+    padding: 20px 16px 60px;
+  }
+  .app{max-width:1180px;margin:0 auto;}
+
+  /* ---------- HEADER ---------- */
+  header.top{
+    display:flex; align-items:flex-end; justify-content:space-between; gap:16px;
+    flex-wrap:wrap; margin-bottom:18px;
+  }
+  .titleblock h1{
+    font-family:'Baloo 2', sans-serif; font-weight:800;
+    font-size: clamp(28px, 4.4vw, 44px);
+    margin:0 0 4px 0; line-height:1.02; letter-spacing:-0.01em;
+    display:flex; align-items:center; gap:10px;
+  }
+  .titleblock h1 .marker{
+    display:inline-block; width:0.85em; height:0.85em; transform:rotate(-8deg);
+  }
+  .titleblock p{margin:0; color:var(--ink-soft); font-size:15px; font-weight:600; max-width:52ch;}
+
+  /* ---------- TABS ---------- */
+  .tabs{
+    display:flex; gap:8px; flex-wrap:wrap; margin-bottom:16px;
+  }
+  .tab{
+    font-family:'Baloo 2', sans-serif; font-weight:700; font-size:15px;
+    padding:9px 16px; border-radius:999px; border:2.5px solid var(--ink);
+    background:var(--card); color:var(--ink); cursor:pointer;
+    transition: transform .12s ease, box-shadow .12s ease;
+    box-shadow: 3px 3px 0 rgba(31,42,68,0.12);
+  }
+  .tab:hover{transform:translateY(-1px);}
+  .tab:focus-visible{outline:3px solid var(--blue); outline-offset:2px;}
+  .tab.active{background:var(--ink); color:var(--paper);}
+  .tab .dot{display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:7px;}
+
+  /* ---------- LAYOUT ---------- */
+  .layout{
+    display:grid; grid-template-columns: minmax(0,1fr) 340px; gap:20px; align-items:start;
+  }
+  @media (max-width: 880px){
+    .layout{grid-template-columns: 1fr;}
+  }
+
+  .grid-card{
+    background:var(--card); border:2.5px solid var(--ink); border-radius:20px;
+    padding:16px; box-shadow: 6px 6px 0 rgba(31,42,68,0.10);
+    overflow-x:auto; position:relative;
+  }
+  .grid-wrap{ position:relative; width:max-content; margin:0 auto; }
+  .connector-layer{ position:absolute; inset:0; pointer-events:none; overflow:visible; z-index:5; }
+
+  .chart-grid{
+    display:grid;
+    grid-template-columns: repeat(13, var(--cell));
+    grid-template-rows: repeat(13, var(--cell));
+    gap:3px;
+  }
+  .cell{
+    display:flex; align-items:center; justify-content:center;
+    font-family:'Nunito', sans-serif; font-weight:700; font-size: calc(var(--cell) * 0.34);
+    border-radius:8px; position:relative; color:var(--ink);
+    background:#fff; user-select:none;
+  }
+  .cell.data{ cursor:pointer; }
+  .cell.header{
+    font-family:'Baloo 2', sans-serif; font-weight:700; color:var(--ink);
+    background:#F1ECDD;
+  }
+  .cell.corner{
+    background:var(--ink); color:var(--paper); font-family:'Baloo 2', sans-serif; font-size: calc(var(--cell)*0.4);
+  }
+  .cell.data:hover{ box-shadow: inset 0 0 0 2.5px var(--ink); }
+
+  /* highlighter marker look: pseudo-blob behind number */
+  .cell .swipe{
+    position:absolute; inset:2px; border-radius:9px; opacity:0; transform:scale(0.6) rotate(0deg);
+    transition: opacity .16s ease, transform .16s ease; z-index:0;
+  }
+  .cell .num{ position:relative; z-index:1; }
+
+  .cell.hl-num .swipe{ opacity:0.85; background:var(--yellow); transform:scale(1) rotate(-2deg); }
+  .cell.hl-den .swipe{ opacity:0.85; background:var(--pink); transform:scale(1) rotate(2deg); }
+  .cell.hl-square .swipe{ opacity:0.9; background:var(--blue); transform:scale(1) rotate(-1deg); }
+  .cell.hl-skip .swipe{ opacity:0.55; background:var(--orange); transform:scale(1) rotate(0deg); }
+  .cell.hl-mirror .swipe{ opacity:0.9; background:var(--mint); transform:scale(1) rotate(1deg); }
+  .cell.hl-factor-active .swipe{ opacity:0.95; background:var(--mint); transform:scale(1.05) rotate(0deg); box-shadow:0 0 0 3px var(--mint-deep);}
+
+  .cell.header.hl-skip{ background:var(--orange); color:#fff; }
+  .cell.header.hl-square{ background:var(--blue); color:#fff; }
+  .cell.header.hl-factor{ box-shadow: inset 0 0 0 3px var(--mint-deep); background:#E3FBF3; }
+  .cell.hl-chainrow{ background:#FFE9D6; }
+
+  /* ---------- PANEL ---------- */
+  .panel{
+    background:var(--card); border:2.5px solid var(--ink); border-radius:20px;
+    padding:18px 18px 20px; box-shadow: 6px 6px 0 rgba(31,42,68,0.10);
+    min-height:200px;
+  }
+  .panel h2{
+    font-family:'Baloo 2', sans-serif; font-size:20px; margin:0 0 4px; font-weight:700;
+  }
+  .panel .sub{ color:var(--ink-soft); font-size:13.5px; font-weight:600; margin:0 0 14px; }
+  .field-row{ display:flex; align-items:center; gap:10px; margin-bottom:14px; }
+  .frac-input{
+    width:64px; text-align:center; font-family:'Baloo 2',sans-serif; font-size:22px; font-weight:700;
+    border:2.5px solid var(--ink); border-radius:10px; padding:6px 4px; color:var(--ink); background:#fff;
+  }
+  .frac-input:focus{ outline:3px solid var(--blue); outline-offset:1px; }
+  .frac-slash{ font-family:'Baloo 2',sans-serif; font-size:26px; font-weight:700; }
+  .swatch{ display:inline-block; width:12px; height:12px; border-radius:3px; margin-right:7px; vertical-align:-1px;}
+  .legend-row{ display:flex; align-items:center; font-size:13.5px; font-weight:700; margin-bottom:6px; }
+
+  .result-box{
+    background:#F1ECDD; border-radius:14px; padding:12px 14px; margin:12px 0;
+    font-family:'Baloo 2', sans-serif;
+  }
+  .result-box .big{ font-size:26px; font-weight:800; display:flex; align-items:center; gap:10px; flex-wrap:wrap;}
+  .result-box .note{ font-family:'Nunito',sans-serif; font-size:13px; color:var(--ink-soft); font-weight:700; margin-top:4px;}
+
+  .chip-row{ display:flex; flex-wrap:wrap; gap:7px; margin-top:8px; }
+  .chip{
+    border:2px solid var(--ink); border-radius:999px; padding:5px 11px; font-weight:800;
+    font-family:'Baloo 2',sans-serif; font-size:14px; background:#fff; cursor:pointer;
+  }
+  .chip.active{ background:var(--mint); }
+  .chip.ghost{ opacity:0.45; cursor:default; }
+  .num-picker{ display:flex; flex-wrap:wrap; gap:6px; margin-bottom:14px; }
+  .num-picker button{
+    width:34px; height:34px; border-radius:9px; border:2.5px solid var(--ink);
+    font-family:'Baloo 2',sans-serif; font-weight:700; background:#fff; cursor:pointer; font-size:15px;
+  }
+  .num-picker button.active{ background:var(--orange); color:#fff; }
+
+  .fact-box{
+    border-left:5px solid var(--orange-deep); background:#FFF3E7; padding:10px 12px;
+    border-radius:0 12px 12px 0; font-size:14px; font-weight:700; line-height:1.4; margin-top:10px;
+  }
+  .toggle-row{ display:flex; align-items:center; gap:10px; margin-bottom:10px; }
+  .toggle{
+    width:46px; height:26px; border-radius:999px; background:#E3DCC7; position:relative; cursor:pointer;
+    border:2px solid var(--ink); flex:none;
+  }
+  .toggle .knob{ position:absolute; top:1px; left:1px; width:19px; height:19px; border-radius:50%; background:var(--ink); transition:left .15s ease; }
+  .toggle.on{ background:var(--blue); }
+  .toggle.on .knob{ left:22px; background:#fff; }
+  .hint{ font-size:13px; color:var(--ink-soft); font-weight:700; margin-top:10px; line-height:1.4;}
+  ul.clean{ margin:8px 0 0; padding-left:18px; font-size:13.5px; font-weight:600; line-height:1.5; }
+  footer.note{ text-align:center; color:var(--ink-soft); font-size:12.5px; font-weight:700; margin-top:22px; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header class="top">
+    <div class="titleblock">
+      <h1><svg class="marker" viewBox="0 0 24 24" fill="none"><path d="M3 21l3.5-1 11-11-2.5-2.5-11 11L3 21z" fill="#FFD93D" stroke="#1F2A44" stroke-width="1.5"/><path d="M15 5l2.5-2.5a1.8 1.8 0 012.5 0l0 0a1.8 1.8 0 010 2.5L17.5 7.5 15 5z" fill="#FF6FA5" stroke="#1F2A44" stroke-width="1.5"/></svg>Multiplication Playground</h1>
+      <p>Tap around the chart, or pick a tool on the right to see the patterns hiding inside the 1&ndash;12 times table.</p>
+    </div>
+  </header>
+
+  <nav class="tabs" id="tabs">
+    <button class="tab active" data-mode="explore"><span class="dot" style="background:var(--blue)"></span>Explore</button>
+    <button class="tab" data-mode="fraction"><span class="dot" style="background:var(--pink)"></span>Simplify a Fraction</button>
+    <button class="tab" data-mode="squares"><span class="dot" style="background:var(--mint)"></span>Squares &amp; Symmetry</button>
+    <button class="tab" data-mode="skip"><span class="dot" style="background:var(--orange)"></span>Skip-Counting</button>
+    <button class="tab" data-mode="oddeven"><span class="dot" style="background:var(--yellow-deep)"></span>Odd &amp; Even</button>
+    <button class="tab" data-mode="primes"><span class="dot" style="background:var(--ink)"></span>Primes &amp; Composites</button>
+    <button class="tab" data-mode="distribute"><span class="dot" style="background:var(--blue)"></span>Distributive Property</button>
+    <button class="tab" data-mode="doubling"><span class="dot" style="background:var(--mint-deep)"></span>Doubling Chains</button>
+  </nav>
+
+  <div class="layout">
+    <div class="grid-card">
+      <div class="grid-wrap" id="gridWrap">
+        <svg class="connector-layer" id="connLayer"></svg>
+        <div class="chart-grid" id="chartGrid"></div>
+      </div>
+    </div>
+
+    <aside class="panel" id="panel"></aside>
+  </div>
+
+  <footer class="note">Built for hands-on multiplication practice &middot; ages 9&ndash;13</footer>
+</div>
+
+<script>
+const SIZE = 12;
+const grid = document.getElementById('chartGrid');
+const gridWrap = document.getElementById('gridWrap');
+const connLayer = document.getElementById('connLayer');
+const panel = document.getElementById('panel');
+const tabsEl = document.getElementById('tabs');
+
+let mode = 'explore';
+let state = {
+  explore: { cell: null },
+  fraction: { num: 8, den: 12, factor: null },
+  squares: { pick: null },
+  skip: { n: 5 },
+  primes: { n: 7 },
+  distribute: { r: 7, c: 8, split: 3 },
+  doubling: { base: 2, col: 5 }
+};
+
+/* ---------- build grid once ---------- */
+const cellEls = {}; // key "r-c" -> element (r,c in 0..12, 0 = header)
+function buildGrid(){
+  for(let r=0;r<=SIZE;r++){
+    for(let c=0;c<=SIZE;c++){
+      const div = document.createElement('div');
+      let cls = 'cell';
+      let label = '';
+      if(r===0 && c===0){ cls+=' corner'; label='&times;'; }
+      else if(r===0){ cls+=' header'; label=c; }
+      else if(c===0){ cls+=' header'; label=r; }
+      else { cls+=' data'; label = r*c; }
+      div.className = cls;
+      div.dataset.r = r; div.dataset.c = c;
+      if(r>0 && c>0){
+        div.innerHTML = `<span class="swipe"></span><span class="num">${label}</span>`;
+        div.addEventListener('click', ()=>onCellClick(r,c));
+      } else {
+        div.innerHTML = `<span class="num">${label}</span>`;
+      }
+      grid.appendChild(div);
+      cellEls[r+'-'+c] = div;
+    }
+  }
+}
+buildGrid();
+
+function clearHighlights(){
+  Object.values(cellEls).forEach(el=>{
+    el.classList.remove('hl-num','hl-den','hl-square','hl-skip','hl-mirror','hl-factor-active','hl-factor');
+  });
+  connLayer.innerHTML = '';
+}
+
+function occurrences(n){
+  const res = [];
+  for(let a=1;a<=SIZE;a++){
+    if(n % a === 0){
+      const b = n/a;
+      if(b>=1 && b<=SIZE) res.push([a,b]);
+    }
+  }
+  return res;
+}
+function gcd(a,b){ return b===0 ? a : gcd(b, a%b); }
+
+/* ---------- connector drawing (svg between two cell centers) ---------- */
+function drawConnector(r1,c1,r2,c2,color){
+  const wrapRect = gridWrap.getBoundingClientRect();
+  const elA = cellEls[r1+'-'+c1].getBoundingClientRect();
+  const elB = cellEls[r2+'-'+c2].getBoundingClientRect();
+  const ax = elA.left - wrapRect.left + elA.width/2;
+  const ay = elA.top - wrapRect.top + elA.height/2;
+  const bx = elB.left - wrapRect.left + elB.width/2;
+  const by = elB.top - wrapRect.top + elB.height/2;
+  const mx = (ax+bx)/2, my=(ay+by)/2;
+  const curveOffset = 26;
+  const path = document.createElementNS('http://www.w3.org/2000/svg','path');
+  path.setAttribute('d', `M ${ax} ${ay} Q ${mx+curveOffset} ${my-curveOffset} ${bx} ${by}`);
+  path.setAttribute('fill','none');
+  path.setAttribute('stroke', color);
+  path.setAttribute('stroke-width','3');
+  path.setAttribute('stroke-linecap','round');
+  path.setAttribute('stroke-dasharray','1 8');
+  connLayer.appendChild(path);
+  connLayer.setAttribute('width', wrapRect.width);
+  connLayer.setAttribute('height', wrapRect.height);
+}
+
+/* ================= EXPLORE MODE ================= */
+function onCellClick(r,c){
+  if(mode==='explore'){ state.explore.cell = [r,c]; renderExplore(); }
+  else if(mode==='squares'){ state.squares.pick = (r===c) ? null : [r,c]; renderSquares(); }
+}
+
+function renderExplore(){
+  clearHighlights();
+  panel.innerHTML = `
+    <h2>Explore the Chart</h2>
+    <p class="sub">Tap any square to see the multiplication fact — and its mirror twin.</p>
+  `;
+  const sel = state.explore.cell;
+  if(!sel){
+    panel.insertAdjacentHTML('beforeend', `<p class="hint">Nothing selected yet. Try tapping a number in the grid, like 7 &times; 8.</p>`);
+    return;
+  }
+  const [r,c] = sel;
+  const val = r*c;
+  // highlight row/col
+  for(let i=1;i<=SIZE;i++){
+    cellEls[r+'-'+i].classList.add('hl-num');
+    cellEls[i+'-'+c].classList.add('hl-den');
+  }
+  cellEls[r+'-'+c].classList.add('hl-factor-active');
+  cellEls[c+'-'+r].classList.add('hl-mirror');
+  if(r!==c) drawConnector(r,c,c,r,'#1F2A44');
+
+  panel.insertAdjacentHTML('beforeend', `
+    <div class="result-box">
+      <div class="big">${r} &times; ${c} = ${val}</div>
+      <div class="note">also written ${c} &times; ${r} = ${val} &mdash; same answer, order swapped.</div>
+    </div>
+    <div class="legend-row"><span class="swatch" style="background:var(--yellow)"></span>Row ${r} (multiples of ${r})</div>
+    <div class="legend-row"><span class="swatch" style="background:var(--pink)"></span>Column ${c} (multiples of ${c})</div>
+    <div class="legend-row"><span class="swatch" style="background:var(--mint)"></span>Mirror square: ${c} &times; ${r}</div>
+    <p class="hint">Notice ${r}&times;${c} and ${c}&times;${r} always match &mdash; that's the <strong>commutative property</strong>. Check "Squares &amp; Symmetry" to see this for the whole chart.</p>
+  `);
+}
+
+/* ================= FRACTION MODE ================= */
+function renderFraction(){
+  clearHighlights();
+  const f = state.fraction;
+  panel.innerHTML = `
+    <h2>Simplify a Fraction</h2>
+    <p class="sub">Type a fraction. Every spot it appears on the chart gets marked.</p>
+    <div class="field-row">
+      <input type="number" min="1" max="144" class="frac-input" id="numIn" value="${f.num}">
+      <span class="frac-slash">/</span>
+      <input type="number" min="1" max="144" class="frac-input" id="denIn" value="${f.den}">
+    </div>
+    <div class="legend-row"><span class="swatch" style="background:var(--yellow)"></span>Numerator (${f.num}) highlighted</div>
+    <div class="legend-row"><span class="swatch" style="background:var(--pink)"></span>Denominator (${f.den}) highlighted</div>
+    <div id="fracResult"></div>
+  `;
+  document.getElementById('numIn').addEventListener('input', e=>{
+    f.num = Math.max(1, Math.min(144, parseInt(e.target.value||'1',10)));
+    f.factor = null; renderFraction();
+  });
+  document.getElementById('denIn').addEventListener('input', e=>{
+    f.den = Math.max(1, Math.min(144, parseInt(e.target.value||'1',10)));
+    f.factor = null; renderFraction();
+  });
+
+  const numOcc = occurrences(f.num);
+  const denOcc = occurrences(f.den);
+  numOcc.forEach(([a,b])=> cellEls[a+'-'+b].classList.add('hl-num'));
+  denOcc.forEach(([a,b])=> cellEls[a+'-'+b].classList.add('hl-den'));
+
+  const resultDiv = document.getElementById('fracResult');
+  if(numOcc.length===0 || denOcc.length===0){
+    resultDiv.innerHTML = `<p class="hint">${numOcc.length===0? f.num : f.den} is bigger than anything on a 12&times;12 chart (max is 144, but it needs a factor pair within 1&ndash;12). Try a smaller number.</p>`;
+    return;
+  }
+
+  // common factors: d divides both, and both quotients <=12
+  const common = [];
+  for(let d=1; d<=SIZE; d++){
+    if(f.num % d === 0 && f.den % d === 0){
+      const qn = f.num/d, qd = f.den/d;
+      if(qn<=SIZE && qd<=SIZE) common.push(d);
+    }
+  }
+  const g = gcd(f.num,f.den);
+  if(f.factor===null) f.factor = common.length ? Math.max(...common) : null;
+
+  if(common.length===0){
+    resultDiv.innerHTML = `<div class="result-box"><div class="big">${f.num}/${f.den}</div><div class="note">No common factor shows up within the chart's 1&ndash;12 range &mdash; this fraction may already be in lowest terms, or the numbers are too large to check here.</div></div>`;
+    return;
+  }
+
+  let chips = common.map(d => `<button class="chip ${d===f.factor?'active':''}" data-d="${d}">&divide;${d}</button>`).join('');
+  resultDiv.insertAdjacentHTML('beforeend', `
+    <div class="legend-row" style="margin-top:10px;"><span class="swatch" style="background:var(--mint)"></span>Common factors (numbers that divide both)</div>
+    <div class="chip-row">${chips}</div>
+  `);
+
+  resultDiv.querySelectorAll('.chip').forEach(btn=>{
+    btn.addEventListener('click', ()=>{ f.factor = parseInt(btn.dataset.d,10); renderFraction(); });
+  });
+
+  if(f.factor){
+    const d = f.factor;
+    const qn = f.num/d, qd = f.den/d;
+    cellEls[d+'-'+qn].classList.add('hl-factor-active');
+    cellEls[d+'-'+qd].classList.add('hl-factor-active');
+    for(let i=0;i<=SIZE;i++){
+      if(cellEls[d+'-'+i]) cellEls[d+'-'+i].classList.add('hl-factor');
+    }
+    cellEls['0-'+d] && cellEls['0-'+d].classList.add('hl-factor');
+    cellEls[d+'-0'] && cellEls[d+'-0'].classList.add('hl-factor');
+    drawConnector(d,qn,d,qd, '#1FAE7F');
+
+    resultDiv.insertAdjacentHTML('beforeend', `
+      <div class="result-box">
+        <div class="big">${f.num}/${f.den} = ${qn}/${qd} <span style="font-size:14px; color:var(--ink-soft);">(&divide;${d})</span></div>
+        <div class="note">Row ${d} holds both ${f.num} (at column ${qn}) and ${f.den} (at column ${qd}) &mdash; that's why ${d} divides evenly into both.</div>
+        ${d===g ? `<div class="note" style="color:var(--mint-deep);">&#9733; This is the <strong>greatest</strong> common factor &mdash; ${qn}/${qd} is fully simplified!</div>` : `<div class="note">Tip: &divide;${g} (the greatest common factor) gets you there in one step.</div>`}
+      </div>
+    `);
+  }
+}
+
+/* ================= SQUARES & SYMMETRY MODE ================= */
+function renderSquares(){
+  clearHighlights();
+  for(let n=1;n<=SIZE;n++) cellEls[n+'-'+n].classList.add('hl-square');
+  panel.innerHTML = `
+    <h2>Squares &amp; Symmetry</h2>
+    <p class="sub">The blue diagonal is where a number meets itself &mdash; the square numbers.</p>
+    <div class="legend-row"><span class="swatch" style="background:var(--blue)"></span>Square numbers: 1, 4, 9, 16 ... 144</div>
+    <p class="hint">Now tap any square <em>off</em> the diagonal &mdash; we'll highlight its mirror image on the other side.</p>
+    <div id="symResult"></div>
+  `;
+  const pick = state.squares.pick;
+  const symResult = document.getElementById('symResult');
+  if(pick){
+    const [r,c] = pick;
+    cellEls[r+'-'+c].classList.add('hl-factor-active');
+    cellEls[c+'-'+r].classList.add('hl-mirror');
+    drawConnector(r,c,c,r,'#1F2A44');
+    symResult.innerHTML = `
+      <div class="result-box">
+        <div class="big">${r} &times; ${c} = ${r*c}</div>
+        <div class="note">${c} &times; ${r} = ${r*c} too &mdash; same product, mirrored across the diagonal.</div>
+      </div>
+      <p class="hint">Every pair of cells that mirror across the blue diagonal share the same value. That's the whole chart's line of symmetry: order doesn't change the answer.</p>
+    `;
+  } else {
+    symResult.innerHTML = `<p class="hint">No pair selected yet.</p>`;
+  }
+}
+
+/* ================= SKIP COUNTING MODE ================= */
+const FACTS = {
+  1:"Anything times 1 stays the same &mdash; 1 is the identity number.",
+  2:"The 2s are just doubling, and every answer is even.",
+  3:"Add up the digits of any 3s answer and you get a multiple of 3 (27 &rarr; 2+7=9).",
+  4:"The 4s are double the 2s &mdash; double a number twice.",
+  5:"Every 5s answer ends in 0 or 5, no exceptions.",
+  6:"The 6s are double the 3s, and every answer is even.",
+  7:"7 has no easy shortcut &mdash; it's the one most people just memorize.",
+  8:"The 8s are double the 4s (which are double the 2s) &mdash; triple doubling.",
+  9:"Digits of any 9s answer add up to 9 (18 &rarr; 1+8=9). Also: the tens digit climbs while the ones digit drops.",
+  10:"Just add a zero to the end of the number you're multiplying.",
+  11:"Up through 11&times;9, just repeat the digit (11, 22, 33 ... 99) &mdash; the pattern breaks after that.",
+  12:"12 is 10 + 2, so 12&times;n = (10&times;n) + (2&times;n)."
+};
+function renderSkip(){
+  clearHighlights();
+  const n = state.skip.n;
+  for(let i=1;i<=SIZE;i++){
+    cellEls[n+'-'+i].classList.add('hl-skip');
+    cellEls[i+'-'+n].classList.add('hl-skip');
+  }
+  cellEls['0-'+n].classList.add('hl-skip');
+  cellEls[n+'-0'].classList.add('hl-skip');
+
+  let picker = '';
+  for(let i=1;i<=SIZE;i++) picker += `<button class="${i===n?'active':''}" data-n="${i}">${i}</button>`;
+
+  let seq = '';
+  for(let i=1;i<=SIZE;i++) seq += `<span class="chip ghost">${n}&times;${i}=${n*i}</span>`;
+
+  panel.innerHTML = `
+    <h2>Skip-Counting &amp; Patterns</h2>
+    <p class="sub">Pick a number to see its row and column light up together.</p>
+    <div class="num-picker" id="numPicker">${picker}</div>
+    <div class="legend-row"><span class="swatch" style="background:var(--orange)"></span>Row &amp; column ${n} (counting by ${n}s)</div>
+    <div class="chip-row">${seq}</div>
+    <div class="fact-box">${FACTS[n]}</div>
+  `;
+  document.getElementById('numPicker').querySelectorAll('button').forEach(btn=>{
+    btn.addEventListener('click', ()=>{ state.skip.n = parseInt(btn.dataset.n,10); renderSkip(); });
+  });
+}
+
+/* ================= ODD & EVEN MODE ================= */
+function renderOddEven(){
+  clearHighlights();
+  let oddCount = 0;
+  for(let r=1;r<=SIZE;r++){
+    for(let c=1;c<=SIZE;c++){
+      if((r*c)%2===1){ cellEls[r+'-'+c].classList.add('hl-num'); oddCount++; }
+    }
+  }
+  for(let n=1;n<=SIZE;n+=2){
+    cellEls['0-'+n].classList.add('hl-factor');
+    cellEls[n+'-0'].classList.add('hl-factor');
+  }
+  const pct = Math.round(oddCount/144*100);
+  panel.innerHTML = `
+    <h2>Odd &amp; Even Pattern</h2>
+    <p class="sub">A product is only odd when <em>both</em> factors are odd.</p>
+    <div class="legend-row"><span class="swatch" style="background:var(--yellow)"></span>Odd products (${oddCount} of 144 &mdash; ${pct}%)</div>
+    <div class="legend-row"><span class="swatch" style="background:#E3FBF3; box-shadow:inset 0 0 0 2px var(--mint-deep);"></span>Odd rows &amp; columns (1, 3, 5, 7, 9, 11)</div>
+    <p class="hint">Odd &times; Odd = Odd. Any other combination &mdash; even&times;even or even&times;odd &mdash; is always even. That's why the yellow cells only ever land where an odd row crosses an odd column.</p>
+    <p class="hint">Quick check: if even one factor is even, you already know the answer is even, before you multiply anything.</p>
+  `;
+}
+
+/* ================= PRIMES & COMPOSITES MODE ================= */
+function isPrimeFull(n){
+  if(n<2) return false;
+  for(let i=2;i*i<=n;i++) if(n%i===0) return false;
+  return true;
+}
+function allDivisors(n){
+  const d=[];
+  for(let i=1;i<=n;i++) if(n%i===0) d.push(i);
+  return d;
+}
+function renderPrimes(){
+  clearHighlights();
+  const st = state.primes;
+  const n = st.n;
+  const occ = occurrences(n);
+  occ.forEach(([a,b])=> cellEls[a+'-'+b].classList.add('hl-factor-active'));
+
+  panel.innerHTML = `
+    <h2>Primes &amp; Composites</h2>
+    <p class="sub">Type a number and see how many times it shows up. Primes barely appear at all.</p>
+    <div class="field-row">
+      <input type="number" min="1" max="144" class="frac-input" id="primeIn" value="${n}" style="width:80px;">
+    </div>
+    <div id="primeResult"></div>
+  `;
+  const resultDiv = document.getElementById('primeResult');
+
+  if(occ.length===0){
+    resultDiv.innerHTML = `<p class="hint">${n} doesn't have a factor pair that fits within 1&ndash;12, so it never appears on this chart. Try a smaller number.</p>`;
+  } else {
+    const divisors = allDivisors(n);
+    const trueCount = divisors.length;
+    const visibleCount = occ.length;
+    const prime = isPrimeFull(n);
+    const statusLabel = n===1 ? 'Neither prime nor composite' : (prime ? 'Prime' : 'Composite');
+    let caveat = '';
+    if(trueCount !== visibleCount){
+      caveat = `<p class="hint">Heads up: ${n} actually has ${trueCount} factors in total (${divisors.join(', ')}), but only ${visibleCount} of its factor pairs fit inside a 12&times;12 chart. On a bigger chart, ${n} would show up more often.</p>`;
+    }
+    let explain;
+    if(prime && n>1) explain = `Primes only ever show up as 1&times;${n} and ${n}&times;1 &mdash; nothing else multiplies together to make them.`;
+    else if(n===1) explain = `1 is special: it's the identity number, not prime or composite.`;
+    else explain = `Composite numbers like ${n} show up over and over, once for every pair of factors that makes them.`;
+
+    resultDiv.innerHTML = `
+      <div class="result-box">
+        <div class="big">${n} appears ${visibleCount} time${visibleCount===1?'':'s'}</div>
+        <div class="note">${statusLabel}</div>
+      </div>
+      ${caveat}
+      <p class="hint">${explain}</p>
+    `;
+  }
+  document.getElementById('primeIn').addEventListener('input', e=>{
+    st.n = Math.max(1, Math.min(144, parseInt(e.target.value||'1',10)));
+    renderPrimes();
+  });
+}
+
+/* ================= DISTRIBUTIVE PROPERTY MODE ================= */
+function renderDistribute(){
+  clearHighlights();
+  const st = state.distribute;
+  const r = st.r, c = st.c;
+  const split = Math.min(Math.max(st.split,1), r-1);
+  st.split = split;
+  const other = r-split;
+  const target = r*c, part1=split*c, part2=other*c;
+
+  cellEls[r+'-'+c].classList.add('hl-square');
+  cellEls[split+'-'+c].classList.add('hl-num');
+  cellEls[other+'-'+c].classList.add('hl-den');
+
+  panel.innerHTML = `
+    <h2>Distributive Property</h2>
+    <p class="sub">Split one factor into two parts &mdash; the products still add up to the same total.</p>
+    <div class="field-row">
+      <input type="number" min="2" max="12" class="frac-input" id="rIn" value="${r}">
+      <span class="frac-slash" style="font-size:20px;">&times;</span>
+      <input type="number" min="1" max="12" class="frac-input" id="cIn" value="${c}">
+    </div>
+    <label class="hint" style="display:block; margin-bottom:6px;">Split ${r} into ${split} + ${other}</label>
+    <input type="range" min="1" max="${r-1}" value="${split}" id="splitRange" style="width:100%; margin-bottom:14px;">
+    <div class="result-box">
+      <div class="big">${r} &times; ${c} = ${target}</div>
+      <div class="note">${split}&times;${c} + ${other}&times;${c} = ${part1} + ${part2} = ${target}</div>
+    </div>
+    <div class="legend-row"><span class="swatch" style="background:var(--yellow)"></span>${split} &times; ${c} = ${part1}</div>
+    <div class="legend-row"><span class="swatch" style="background:var(--pink)"></span>${other} &times; ${c} = ${part2}</div>
+    <div class="legend-row"><span class="swatch" style="background:var(--blue)"></span>${r} &times; ${c} = ${target} (the whole)</div>
+    <p class="hint">This is the trick behind mental math, and later, algebra: 7&times;8 is easier as 7&times;(4+4), or 5&times;8 + 2&times;8.</p>
+  `;
+  document.getElementById('rIn').addEventListener('input', e=>{
+    st.r = Math.max(2, Math.min(12, parseInt(e.target.value||'2',10)));
+    st.split = Math.floor(st.r/2);
+    renderDistribute();
+  });
+  document.getElementById('cIn').addEventListener('input', e=>{
+    st.c = Math.max(1, Math.min(12, parseInt(e.target.value||'1',10)));
+    renderDistribute();
+  });
+  document.getElementById('splitRange').addEventListener('input', e=>{
+    st.split = parseInt(e.target.value,10);
+    renderDistribute();
+  });
+}
+
+/* ================= DOUBLING CHAINS MODE ================= */
+function renderDoubling(){
+  clearHighlights();
+  const st = state.doubling;
+  const chain = [];
+  let v = st.base;
+  while(v<=SIZE){ chain.push(v); v*=2; }
+
+  chain.forEach(n=>{
+    for(let i=0;i<=SIZE;i++){ if(cellEls[n+'-'+i]) cellEls[n+'-'+i].classList.add('hl-chainrow'); }
+  });
+  chain.forEach(n=> cellEls[n+'-'+st.col].classList.add('hl-factor-active'));
+  cellEls['0-'+st.col].classList.add('hl-factor');
+
+  let basePicker='';
+  for(let i=1;i<=6;i++) basePicker += `<button class="${i===st.base?'active':''}" data-n="${i}">${i}</button>`;
+  let colPicker='';
+  for(let i=1;i<=SIZE;i++) colPicker += `<button class="${i===st.col?'active':''}" data-c="${i}">${i}</button>`;
+
+  const chainText = chain.map(n=> `${n}&times;${st.col}=${n*st.col}`).join(' &rarr; ');
+
+  panel.innerHTML = `
+    <h2>Doubling Chains</h2>
+    <p class="sub">Some rows are just doubled versions of earlier rows.</p>
+    <p class="hint">Starting row (pick 1&ndash;6, so it has room to double):</p>
+    <div class="num-picker" id="basePicker">${basePicker}</div>
+    <p class="hint">Column to check:</p>
+    <div class="num-picker" id="colPicker">${colPicker}</div>
+    ${chain.length<2
+      ? `<p class="hint">Row ${st.base} doesn't have a doubling partner within 1&ndash;12. Try a smaller starting row.</p>`
+      : `<div class="result-box"><div class="big" style="font-size:19px;">${chainText}</div><div class="note">Each number is exactly double the one before it.</div></div>
+         <p class="hint">Rows ${chain.join(', ')} are all connected by doubling. Once you know row ${chain[0]}, you can find the rest just by doubling &mdash; no new memorizing required.</p>`}
+  `;
+  document.getElementById('basePicker').querySelectorAll('button').forEach(b=>
+    b.addEventListener('click', ()=>{ st.base = parseInt(b.dataset.n,10); renderDoubling(); }));
+  document.getElementById('colPicker').querySelectorAll('button').forEach(b=>
+    b.addEventListener('click', ()=>{ st.col = parseInt(b.dataset.c,10); renderDoubling(); }));
+}
+
+/* ================= MODE SWITCHING ================= */
+function render(){
+  if(mode==='explore') renderExplore();
+  else if(mode==='fraction') renderFraction();
+  else if(mode==='squares') renderSquares();
+  else if(mode==='skip') renderSkip();
+  else if(mode==='oddeven') renderOddEven();
+  else if(mode==='primes') renderPrimes();
+  else if(mode==='distribute') renderDistribute();
+  else if(mode==='doubling') renderDoubling();
+}
+tabsEl.querySelectorAll('.tab').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    mode = btn.dataset.mode;
+    tabsEl.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    render();
+  });
+});
+window.addEventListener('resize', ()=> render());
+
+render();
+</script>
+</body>
+</html>
